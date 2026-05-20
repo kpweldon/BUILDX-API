@@ -1,4 +1,4 @@
-name: Nightly Descript batch transcribe
+name: Nightly YouTube ingest + Descript transcribe
 
 on:
   schedule:
@@ -7,9 +7,9 @@ on:
   workflow_dispatch: {}
 
 jobs:
-  transcribe:
+  ingest-and-transcribe:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 90
     env:
       DESCRIPT_API_KEY: ${{ secrets.DESCRIPT_API_KEY }}
       DESCRIPT_API_BASE_URL: ${{ vars.DESCRIPT_API_BASE_URL }}
@@ -21,11 +21,22 @@ jobs:
           python-version: "3.12"
           cache: pip
 
-      - name: Install deps
+      - name: Install ffmpeg (for yt-dlp postprocessing)
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg
+
+      - name: Install Python deps
         run: pip install -r requirements.txt
 
-      - name: Run batch transcribe
-        run: python scripts/batch_transcribe.py --input ./data --output ./out
+      - name: Restore ingest state cache
+        uses: actions/cache@v4
+        with:
+          path: data/.state
+          key: yt-ingest-state-${{ github.run_id }}
+          restore-keys: |
+            yt-ingest-state-
+
+      - name: Ingest YouTube + transcribe via Descript
+        run: python scripts/ingest_youtube.py
 
       - name: Upload transcripts artifact
         if: always()

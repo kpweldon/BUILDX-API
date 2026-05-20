@@ -1,0 +1,9 @@
+# One YouTube channel per line. Comments (#) and blank lines are ignored.
+# Accepts any URL/handle yt-dlp understands:
+#   https://www.youtube.com/@MrBeast
+#   https://www.youtube.com/channel/UCX6OQ3DkcsbYNE6H8uQQuVA
+#   @MrBeast
+#
+# Examples (uncomment / replace with your own):
+# https://www.youtube.com/@MrBeast
+# https://www.youtube.com/@mkbhd

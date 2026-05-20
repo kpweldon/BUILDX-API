@@ -1,7 +1,9 @@
 # BUILDX-API — Descript integration
 
 Python scaffolding for talking to the Descript API, plus a nightly GitHub
-Actions workflow that batch-transcribes media files.
+Actions workflow that pulls fresh YouTube content (long-form >2min and
+Shorts ≤60s, kept in separate buckets) and batch-transcribes it through
+Descript.
 
 ## Setup
 
@@ -20,24 +22,51 @@ Actions workflow that batch-transcribes media files.
      - `DESCRIPT_API_KEY` (required)
      - Optional repo variable `DESCRIPT_API_BASE_URL` if you need to override.
 
-4. **Run a one-off batch locally**
+4. **Add YouTube channels to monitor**
+   Edit `config/channels.txt` and add channel URLs or @handles, one per line.
+
+5. **Run the nightly job locally**
    ```bash
-   mkdir -p data && cp ~/Recordings/*.mp3 data/
+   # Ingest YouTube + transcribe everything
+   python scripts/ingest_youtube.py
+
+   # Or just download, skip transcription
+   python scripts/ingest_youtube.py --no-transcribe
+
+   # Or transcribe a folder of local media files
    python scripts/batch_transcribe.py --input ./data --output ./out
    ```
 
 ## Repo layout
 
 ```
-descript_api/        Python client + per-feature modules
-  client.py          Auth, retries, request plumbing
-  transcription.py   Upload / start / poll / fetch transcript
+config/channels.txt   YouTube channels the nightly job watches
+descript_api/         Python client + per-feature modules
+  client.py           Auth, retries, request plumbing
+  transcription.py    Upload / start / poll / fetch transcript
+  youtube_ingest.py   yt-dlp wrapper: list channel, filter by duration, download
   exceptions.py
 scripts/
-  batch_transcribe.py  CLI entrypoint used by the nightly workflow
+  ingest_youtube.py   Nightly: pull YouTube -> bucket -> transcribe
+  batch_transcribe.py Transcribe any local folder of media files
 .github/workflows/
   nightly-transcribe.yml   Cron job (07:00 UTC daily)
+data/                 (gitignored) downloaded media, split into long_form/ + shorts/
+data/.state/          (gitignored) seen-video-id cache so reruns are incremental
+out/                  (gitignored) JSON transcripts, mirrored long_form/ + shorts/
 ```
+
+## How the YouTube pipeline works
+
+For each channel in `config/channels.txt`:
+1. `yt-dlp --flat-playlist` lists the latest videos (default 10).
+2. Each video is filtered by duration:
+   - `> 120s` → `data/long_form/` (transcribed into `out/long_form/`)
+   - `≤ 60s` (or `/shorts/` URL) → `data/shorts/` (→ `out/shorts/`)
+   - `60–120s` → skipped (ambiguous "long" but under your 2-minute bar)
+3. Already-downloaded video IDs are remembered in `data/.state/seen.json`
+   so reruns only fetch new uploads.
+4. Audio-only (`m4a`) is pulled to keep storage and transcription cost down.
 
 ## What this scaffold gives you
 
