@@ -18,6 +18,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 from descript_api import DescriptClient, DescriptAPIError
+from descript_api.drive import maybe_get_uploader
 from descript_api.transcription import TranscriptionAPI
 from descript_api.youtube_ingest import ingest_channels, read_channels
 
@@ -86,6 +87,7 @@ def main() -> int:
     )
 
     if args.no_transcribe:
+        _maybe_upload_to_drive(data_root, Path(args.out_root))
         return 0
 
     client = DescriptClient()
@@ -94,7 +96,22 @@ def main() -> int:
     failures = 0
     failures += transcribe_bucket(api, data_root / "long_form", out_root / "long_form", args.language)
     failures += transcribe_bucket(api, data_root / "shorts", out_root / "shorts", args.language)
+
+    _maybe_upload_to_drive(data_root, out_root)
     return 1 if failures else 0
+
+
+def _maybe_upload_to_drive(data_root: Path, out_root: Path) -> None:
+    uploader = maybe_get_uploader()
+    if uploader is None:
+        log.info("Drive upload skipped (DRIVE_FOLDER_ID / GOOGLE_OAUTH_CREDS not set)")
+        return
+    # Upload videos and transcripts into mirrored Drive subfolders.
+    log.info("Uploading media + transcripts to Google Drive")
+    uploader.upload_bucket(data_root / "long_form", "long_form")
+    uploader.upload_bucket(data_root / "shorts", "shorts")
+    uploader.upload_bucket(out_root / "long_form", "long_form")
+    uploader.upload_bucket(out_root / "shorts", "shorts")
 
 
 if __name__ == "__main__":

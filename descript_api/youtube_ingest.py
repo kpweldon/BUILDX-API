@@ -122,14 +122,16 @@ def _save_seen(state_path: Path, seen: Iterable[str]) -> None:
 
 
 def download_video(entry: VideoEntry, out_dir: Path) -> Optional[Path]:
-    """Download a single video's audio (m4a) into out_dir. Returns the file path."""
+    """Download a single video (video+audio merged into mp4) into out_dir."""
     out_dir.mkdir(parents=True, exist_ok=True)
-    # We only need audio for transcription; m4a keeps size small.
     output_tmpl = str(out_dir / "%(id)s.%(ext)s")
     cmd = [
         "yt-dlp",
+        # Best video + best audio, merge to mp4 (requires ffmpeg in PATH).
         "-f",
-        "bestaudio[ext=m4a]/bestaudio",
+        "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best",
+        "--merge-output-format",
+        "mp4",
         "-o",
         output_tmpl,
         "--no-progress",
@@ -141,7 +143,6 @@ def download_video(entry: VideoEntry, out_dir: Path) -> Optional[Path]:
     if result.returncode != 0:
         log.error("yt-dlp download failed for %s: %s", entry.video_id, result.stderr.strip())
         return None
-    # Find the produced file by id prefix
     for p in out_dir.iterdir():
         if p.stem == entry.video_id:
             return p

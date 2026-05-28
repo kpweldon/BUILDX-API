@@ -66,7 +66,42 @@ For each channel in `config/channels.txt`:
    - `60–120s` → skipped (ambiguous "long" but under your 2-minute bar)
 3. Already-downloaded video IDs are remembered in `data/.state/seen.json`
    so reruns only fetch new uploads.
-4. Audio-only (`m4a`) is pulled to keep storage and transcription cost down.
+4. Full video (`mp4`, video+audio merged with ffmpeg) is downloaded so the
+   same file can be sent to Descript AND archived to Google Drive.
+5. (Optional) Each video and its transcript is uploaded to Google Drive
+   into mirrored `long_form/` and `shorts/` subfolders.
+
+## Google Drive upload (optional)
+
+Drive uploads need a one-time OAuth setup because personal Gmail accounts
+don't allow service-account uploads (no storage quota on consumer Drive).
+
+**One-time setup:**
+
+1. **Google Cloud Console** — https://console.cloud.google.com
+   - Create a project (or reuse one)
+   - APIs & Services → Library → enable **Google Drive API**
+   - OAuth consent screen → User Type **External** → add yourself as a Test user → add scope `https://www.googleapis.com/auth/drive.file`
+   - Credentials → Create credentials → **OAuth client ID** → Application type **Desktop app**
+   - Download the JSON, save it as `client_secret.json` in the repo root
+
+2. **Mint a refresh token locally** (do NOT run this in CI):
+   ```bash
+   python scripts/setup_drive_auth.py
+   ```
+   A browser opens, you grant access, the script prints a JSON blob.
+
+3. **Create a Drive folder** to receive uploads (e.g. "BUILDX YouTube"),
+   then copy the folder ID from its URL:
+   `https://drive.google.com/drive/folders/<THIS_IS_THE_ID>`
+
+4. **Add two GitHub secrets** at
+   https://github.com/kpweldon/buildx-api/settings/secrets/actions:
+   - `GOOGLE_OAUTH_CREDS` — paste the entire JSON blob from step 2
+   - `DRIVE_FOLDER_ID` — paste the folder ID from step 3
+
+The next workflow run will upload `<video_id>.mp4` and `<video_id>.json`
+into mirrored `long_form/` and `shorts/` subfolders under your Drive folder.
 
 ## What this scaffold gives you
 
