@@ -1,9 +1,10 @@
 name: Nightly YouTube ingest + Descript transcribe
 
 on:
-  schedule:
-    # 07:00 UTC daily = midnight PT / 03:00 ET. Adjust as needed.
-    - cron: "0 7 * * *"
+  # PAUSED: daily schedule disabled. Uncomment the two lines below to resume.
+  # schedule:
+  #   # 07:00 UTC daily = midnight PT / 03:00 ET. Adjust as needed.
+  #   - cron: "0 7 * * *"
   workflow_dispatch: {}
   push:
     branches:
